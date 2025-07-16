@@ -14,3 +14,4 @@ readonly CYAN_LIGHT="\033[1;36m"
 # thickness
 readonly BOLD=$(tput bold)
 readonly NORMAL=$(tput sgr0)
+

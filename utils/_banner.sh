@@ -43,6 +43,7 @@ print_banner() {
   printf "    protegido por direitos autorais e licenças de uso.\n\n";
   printf "    A reprodução, distribuição ou modificação não autorizada\n";
   printf "    são proibidas por lei.\n\n";
+  printf "    Use o instalador para instalação do ZAPI WABOOT\n\n";
   printf "    Ao prosseguir, você concorda com os termos de uso e com\n";
   printf "    a utilização legal do sistema.\n";
   printf "${NC}";
