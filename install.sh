@@ -1,152 +1,151 @@
 #!/bin/bash
+echo "🚀 Instalador ZapiWaBoot (Ubuntu 22.04+)"
 
-# Script de instalação do ZapiWaBoot (Whaticket) via CODIGOZAPIWABOOT2025
-# Compatível com Ubuntu 22.04+
+# =========== ATUALIZAÇÃO DO SISTEMA ===========
+echo "🔄 Atualizando o sistema antes de tudo..."
+sudo apt update && sudo apt upgrade -y
 
-echo "🚀 Iniciando instalação automatizada do ZapiWaBoot..."
+# =============== PROMPTS ===============
+read -p "Domínio FRONTEND (ex: app.ex.com): " FRONTEND_DOMAIN
+read -p "Domínio BACKEND (ex: api.ex.com): " BACKEND_DOMAIN
 
-# === DADOS DO USUÁRIO ===
-read -p "🌐 Domínio do FRONTEND (ex: app.seudominio.com): " FRONTEND_DOMAIN
-read -p "🌐 Domínio do BACKEND (ex: api.seudominio.com): " BACKEND_DOMAIN
-
-read -p "📦 Nome do banco de dados [zapiwaboot]: " DB_NAME
+read -p "Nome do banco [zapiwaboot]: " DB_NAME
 DB_NAME=${DB_NAME:-zapiwaboot}
-
-read -p "👤 Usuário do banco [zapiuser]: " DB_USER
+read -p "Usuário do banco [zapiuser]: " DB_USER
 DB_USER=${DB_USER:-zapiuser}
+read -s -p "Senha do banco: " DB_PASS && echo
 
-read -s -p "🔑 Senha do banco: " DB_PASS
-echo
+read -p "GitHub usuário: " GH_USER
+read -s -p "GitHub token (senha): " GH_TOKEN && echo
 
-read -p "👤 GitHub usuário (para clonar o repositório): " GITHUB_USER
-read -s -p "🔑 GitHub token (acesso pessoal): " GITHUB_TOKEN
-echo
+APP="zapiwaboot"; DEPLOY="deploy"; BD_PORT=8080
+BASE="/home/$DEPLOY/$APP"; FRONT="$BASE/frontend/build"
 
-APP_NAME="zapiwaboot"
-BACKEND_PORT=8080
-DEPLOY_USER="deploy"
-PROJECT_DIR="/home/$DEPLOY_USER/$APP_NAME"
-FRONTEND_DIR="$PROJECT_DIR/frontend/build"
+# =========== DEPENDÊNCIAS ===========
+echo "📦 Instalando pacotes necessários..."
+sudo apt-get install -y curl wget unzip git \
+ libgbm-dev fontconfig locales gconf-service libasound2 \
+ libatk1.0-0 libc6 libcairo2 libcups2 libdbus-1-3 \
+ libexpat1 libfontconfig1 libgcc1 libgconf-2-4 \
+ libgdk-pixbuf2.0-0 libglib2.0-0 libgtk-3-0 libnspr4 \
+ libpango-1.0-0 libpangocairo-1.0-0 libstdc++6 \
+ libx11-6 libx11-xcb1 libxcb1 libxcomposite1 libxcursor1 \
+ libxdamage1 libxext6 libxfixes3 libxi6 libxrandr2 libxrender1 \
+ libxss1 libxtst6 ca-certificates fonts-liberation \
+ libappindicator1 libnss3 lsb-release xdg-utils \
+ build-essential nginx postgresql postgresql-contrib \
+ redis-server certbot python3-certbot-nginx ufw fail2ban
 
-# === DEPENDÊNCIAS ===
-echo "📦 Instalando pacotes do sistema..."
-apt update && apt upgrade -y
-apt install -y git curl build-essential nginx postgresql postgresql-contrib redis certbot python3-certbot-nginx ufw sudo
+sudo systemctl enable --now fail2ban
 
-# === CRIANDO USUÁRIO DEPLOY ===
-if ! id "$DEPLOY_USER" &>/dev/null; then
-  echo "👤 Criando usuário '$DEPLOY_USER'..."
-  adduser --disabled-password --gecos "" "$DEPLOY_USER"
+# =========== FIREWALL ===========
+sudo ufw default allow outgoing
+sudo ufw default deny incoming
+sudo ufw allow OpenSSH
+sudo ufw allow 22
+sudo ufw allow http
+sudo ufw allow https
+sudo ufw --force enable
+
+# =========== CRIA USUÁRIO DEPLOY ===========
+if ! id "$DEPLOY" &>/dev/null; then
+  sudo adduser --disabled-password --gecos "" "$DEPLOY"
 fi
+sudo mkdir -p "/home/$DEPLOY"
+sudo chown "$DEPLOY:$DEPLOY" "/home/$DEPLOY"
 
-mkdir -p "/home/$DEPLOY_USER"
-chown "$DEPLOY_USER":"$DEPLOY_USER" "/home/$DEPLOY_USER"
+# =========== CLONA O REPOSITÓRIO ===========
+cd "/home/$DEPLOY"
+sudo -u "$DEPLOY" git clone \
+"https://$GH_USER:$GH_TOKEN@github.com/ZapiWaboot/INTALADORUBUNTU22.04.git" "$APP"
 
-# === CLONANDO PROJETO AUTENTICADO ===
-echo "📥 Clonando repositório ZapiWaBoot com autenticação GitHub..."
-cd "/home/$DEPLOY_USER"
-REPO_URL="https://$GITHUB_USER:$GITHUB_TOKEN@github.com/ZapiWaboot/CODIGOZAPIWABOOT2025.git"
-sudo -u "$DEPLOY_USER" git clone "$REPO_URL" "$APP_NAME"
+sudo chown -R "$DEPLOY:$DEPLOY" "$BASE"
+sudo find "$BASE" -type d -exec chmod 775 {} \;
+sudo find "$BASE" -type f -exec chmod 664 {} \;
 
-# === AJUSTANDO PERMISSÕES ===
-echo "🔐 Ajustando permissões..."
-chown -R "$DEPLOY_USER":"$DEPLOY_USER" "$PROJECT_DIR"
-find "$PROJECT_DIR" -type d -exec chmod 775 {} \;
-find "$PROJECT_DIR" -type f -exec chmod 664 {} \;
-
-# === CONFIGURANDO BANCO DE DADOS ===
-echo "🐘 Criando banco e usuário PostgreSQL..."
-sudo -u postgres psql <<EOF
+# =========== POSTGRES ===========
+sudo -u postgres psql <<SQL
 CREATE DATABASE $DB_NAME;
 CREATE USER $DB_USER WITH ENCRYPTED PASSWORD '$DB_PASS';
 GRANT ALL PRIVILEGES ON DATABASE $DB_NAME TO $DB_USER;
-EOF
+SQL
 
-# === EXECUTANDO SETUP COMO DEPLOY ===
-su - "$DEPLOY_USER" <<EOF
-# Node e PM2 via NVM
-export NVM_DIR="/home/$DEPLOY_USER/.nvm"
-source "\$NVM_DIR/nvm.sh" || true
-
+# =========== NODE, NVM, PM2, BACKEND/FRONTEND ===========
+sudo -u "$DEPLOY" bash <<EOF
+export NVM_DIR="/home/$DEPLOY/.nvm"
 curl -o- https://raw.githubusercontent.com/nvm-sh/nvm/v0.39.7/install.sh | bash
 source "\$NVM_DIR/nvm.sh"
-nvm install 20
-nvm use 20
+nvm install 20 && nvm use 20
 npm install -g pm2
 
 # Backend
-cd "$PROJECT_DIR/backend"
+cd "$BASE/backend"
 cp .env.example .env
 sed -i "s/DB_USER=.*/DB_USER=$DB_USER/" .env
 sed -i "s/DB_PASS=.*/DB_PASS=$DB_PASS/" .env
 sed -i "s/DB_NAME=.*/DB_NAME=$DB_NAME/" .env
 sed -i "s|PROD_FRONTEND_URL=.*|PROD_FRONTEND_URL=https://$FRONTEND_DOMAIN|" .env
-
 npm install
 npm run build
 npx sequelize db:migrate
-pm2 start dist/server.js --name zapi-backend
+pm2 start dist/server.js --name backend --max-memory-restart 400M
+pm2 save
 
 # Frontend
-cd "$PROJECT_DIR/frontend"
+cd "$BASE/frontend"
 cp .env.example .env
 sed -i "s|REACT_APP_BACKEND_URL=.*|REACT_APP_BACKEND_URL=https://$BACKEND_DOMAIN/api|" .env
 npm install
 npm run build
+pm2 start server.js --name frontend --max-memory-restart 400M
+pm2 save
 EOF
 
-# === CONFIGURANDO NGINX ===
-echo "🌐 Configurando NGINX..."
-tee /etc/nginx/sites-available/zapiwaboot <<EOF
+# =========== NGINX ===========
+sudo tee /etc/nginx/sites-available/backend.conf <<NGINX
 server {
-    listen 80;
-    server_name $FRONTEND_DOMAIN;
-
-    root $FRONTEND_DIR;
-    index index.html;
-
-    location / {
-        try_files \$uri /index.html;
-    }
+  server_name $BACKEND_DOMAIN;
+  location / {
+    proxy_pass http://127.0.0.1:$BD_PORT;
+    proxy_http_version 1.1;
+    proxy_set_header Upgrade \$http_upgrade;
+    proxy_set_header Connection 'upgrade';
+    proxy_set_header Host \$host;
+    proxy_set_header X-Real-IP \$remote_addr;
+    proxy_set_header X-Forwarded-For \$proxy_add_x_forwarded_for;
+  }
 }
+NGINX
 
+sudo tee /etc/nginx/sites-available/frontend.conf <<NGINX
 server {
-    listen 80;
-    server_name $BACKEND_DOMAIN;
-
-    location /api/ {
-        proxy_pass http://localhost:$BACKEND_PORT/;
-        proxy_http_version 1.1;
-        proxy_set_header Upgrade \$http_upgrade;
-        proxy_set_header Connection 'upgrade';
-        proxy_set_header Host \$host;
-        proxy_cache_bypass \$http_upgrade;
-    }
+  server_name $FRONTEND_DOMAIN;
+  location / {
+    proxy_pass http://127.0.0.1:3000;
+    proxy_http_version 1.1;
+    proxy_set_header Upgrade \$http_upgrade;
+    proxy_set_header Connection 'upgrade';
+    proxy_set_header Host \$host;
+    proxy_set_header X-Real-IP \$remote_addr;
+    proxy_set_header X-Forwarded-For \$proxy_add_x_forwarded_for;
+  }
 }
-EOF
+NGINX
 
-ln -sf /etc/nginx/sites-available/zapiwaboot /etc/nginx/sites-enabled
-rm -f /etc/nginx/sites-enabled/default
-nginx -t && systemctl reload nginx
+sudo ln -sf /etc/nginx/sites-available/backend.conf /etc/nginx/sites-enabled/
+sudo ln -sf /etc/nginx/sites-available/frontend.conf /etc/nginx/sites-enabled/
+sudo sed -i 's|client_max_body_size .*|client_max_body_size 20M;|' /etc/nginx/nginx.conf
+sudo nginx -t && sudo systemctl restart nginx
 
-# === SSL ===
-echo "🔐 Ativando HTTPS com Certbot..."
-certbot --nginx -d "$FRONTEND_DOMAIN" -d "$BACKEND_DOMAIN" --non-interactive --agree-tos -m admin@$FRONTEND_DOMAIN
-systemctl enable certbot.timer
+# =========== SSL ===========
+sudo certbot --nginx -d "$FRONTEND_DOMAIN" -d "$BACKEND_DOMAIN" \
+ --non-interactive --agree-tos -m admin@$FRONTEND_DOMAIN
+sudo systemctl enable certbot.timer
 
-# === FIREWALL ===
-echo "🛡️ Ativando UFW..."
-ufw allow OpenSSH
-ufw allow 'Nginx Full'
-ufw --force enable
-
-# === FINAL ===
-echo ""
-echo "✅ Instalação concluída com sucesso!"
-echo "🌍 Frontend: https://$FRONTEND_DOMAIN"
-echo "🔗 Backend:  https://$BACKEND_DOMAIN/api"
-echo "📦 Banco: $DB_NAME (usuário: $DB_USER)"
-echo "🧠 PM2 status: su - deploy -c 'pm2 list'"
-echo "🔐 SSL com auto-renovação habilitado."
-echo ""
-exit 0
+# =========== FINAL ===========
+echo -e "\n✅ INSTALAÇÃO COMPLETA!"
+echo "Frontend: https://$FRONTEND_DOMAIN"
+echo "Backend:  https://$BACKEND_DOMAIN"
+echo "Usuário deploy: $DEPLOY"
+echo "Banco: $DB_NAME com usuário $DB_USER"
+echo "Use: pm2 list"
