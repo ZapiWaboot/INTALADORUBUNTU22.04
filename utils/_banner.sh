@@ -40,7 +40,7 @@ print_banner() {
   
   printf "${WHITE}";
   printf "    Este sistema é de propriedade exclusiva do ZAPI WABOOT,\n";
-  printf "    protegido por direitos autorais e licenças de uso.\n";
+  printf "    protegido por direitos autorais e licenças de uso.\n\n";
   printf "    A reprodução, distribuição ou modificação não autorizada\n";
   printf "    são proibidas por lei.\n\n";
   printf "    Ao prosseguir, você concorda com os termos de uso e com\n";
