@@ -67,8 +67,11 @@ Não utilize caracteres especiais. Exemplo: senha1234
 
 
 ## 04 - INSIRA O LINK DO GITHUB DO WHATICKET QUE DESEJA INSTALAR
-Informe o link do repositório GitHub do Whaticket que você deseja instalar: https://github.com/github/nomedoseucodigoqueestahospedadonogithub.git
+Informe o link do repositório GitHub do Whaticket que você deseja instalar:
 
+```bash
+ https://github.com/github/nomedoseucodigoqueestahospedadonogithub.git
+```
 
 
 
