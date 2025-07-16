@@ -69,9 +69,8 @@ Não utilize caracteres especiais. Exemplo: senha1234
 ## 04 - INSIRA O LINK DO GITHUB DO WHATICKET QUE DESEJA INSTALAR
 Informe o link do repositório GitHub do Whaticket que você deseja instalar:
 
-```bash
- https://github.com/github/nomedoseucodigoqueestahospedadonogithub.git
-```
+Exemplo: https://github.com/github/nomedoseucodigoqueestahospedadonogithub.git
+
 
 
 
@@ -124,11 +123,12 @@ Informe a porta do Redis ou agendamento NSG para sua empresa. Exemplo:5000
 
 
 ## 13 - COLOQUE O NOME DO SEU USUÁRIO E SENHA
-Informe o nome de usuário e a senha do seu GitHub. seu-usuario-github
+Informe o nome de usuário e a senha do seu GitHub, Exemplo: seu-usuario-github
 
 
 
 
 ## 14 - COLOQUE O TOKEN GERADO NO SEU GITHUB
-Informe o token gerado no seu GitHub: ghp_AAn6usdfds125LIEINdfsdikxds84dasdu4a
+Informe o token gerado no seu GitHub, Exemplo: ghp_AAn6usdfds125LIEINdfsdikxds84dasdu4a
+
 
